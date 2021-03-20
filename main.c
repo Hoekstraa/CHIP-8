@@ -19,7 +19,6 @@ uint16_t indexreg = 0;
 uint8_t registers[16];
 
 //Helper function
-
 void load_into_mem(char* filename)
 {
     FILE *f = fopen(filename, "rb");
@@ -73,11 +72,8 @@ void setindex(uint16_t index)
     indexreg = index;
 }
 
-// CURRENTLY ONLY SUPPORTS WRITING MAX 1 VALUE TO SCREEN, NO SPRITES!!
 void draw(uint8_t x, uint8_t y, uint8_t n)
 {
-    uint8_t mem = memory[indexreg];
-
     // Value of register y. If greater than the screenheight, 'overflow' the screen.
     uint8_t vy = registers[y] % SCREEN_HEIGHT;
     // Reset the F register, as per hardware definition.
@@ -123,6 +119,8 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
         ++vy; // Next row.
         if(vy >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
     }
+
+    render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
 }
 
 // Return current instruction to be ran. Also, shift programcounter to next instruction.
@@ -205,13 +203,12 @@ int handleEvents()
     if (SDL_PollEvent(&event))
     {
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE)
-            // Break out of the gameloop on quit
-            return 0;
+            return 0; // Break out of the gameloop on quit
+
         if (event.type == SDL_KEYDOWN)
         {
             if(event.key.keysym.sym == SDLK_ESCAPE)
-                // Break out of the gameloop on quit
-                return 0;
+                return 0; // Break out of the gameloop on quit
             else
                 //handleKey(event.key.keysym.sym);
                 return 1;
@@ -226,10 +223,11 @@ int main(int argc, char ** argv)
     setfont(memory); // Set CHIP-8 font in memory.
     load_into_mem("roms/test_opcode.ch8"); // Load in program.
 
+    render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
+
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
         //printf("\n%i\n", programcounter);
-        render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
         cpu();
         //sleep(1);
     }
