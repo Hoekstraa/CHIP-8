@@ -1,7 +1,6 @@
 //#include "bits.h"
 #include <stdint.h>
 
-//void setfont(int8_t (*memory)[4096])
 void setfont(uint8_t *memory)
 {
     // 0

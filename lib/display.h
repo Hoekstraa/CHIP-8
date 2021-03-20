@@ -8,7 +8,6 @@ SDL_Window *window = 0; // Global window
 SDL_Renderer *renderer = 0; // Global renderer
 SDL_Texture *screenTexture = 0;
 
-
 void initDisplay(int screenwidth, int screenheight)
 {
     //Initialize SDL
