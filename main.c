@@ -16,6 +16,7 @@ void load_into_mem(char* filename)
 {
     FILE *f = fopen(filename, "rb");
     char data = 0;
+
     if (!f)
     {
         printf("Unable to open file!\n");
@@ -25,13 +26,12 @@ void load_into_mem(char* filename)
     for(int i = 512; ; i++) // Bit 512(0x200) is the start of programs.
     {
         data = fgetc(f);
+
         if (feof(f))
             break;
-        else
-        {
-            printf("Setting memory address block %i with %i, %x\n", i, (uint8_t)data, (uint8_t)data);
-            memory[i] = (uint8_t)data;
-        }
+
+        printf("Setting memory address block %i with %i, %x\n", i, (uint8_t)data, (uint8_t)data);
+        memory[i] = (uint8_t)data;
     }
     fclose(f);
 }
@@ -59,11 +59,17 @@ int handleEvents()
 
 int main(int argc, char ** argv)
 {
-    initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
-    setfont(memory); // Set CHIP-8 font in memory.
-    load_into_mem("roms/test_opcode.ch8"); // Load in program.
+    if(argc < 2 || argc > 2)
+    {
+        printf("Please run this command as follows: %s [programname.ch8]\n", argv[0]);
+        return 1;
+    }
 
-    render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
+    load_into_mem(argv[1]); // Load in program.
+    setfont(memory); // Set CHIP-8 font in memory.
+
+    initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
+    render(SCREEN_WIDTH, SCREEN_HEIGHT, display); // Set screen to black.
 
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {

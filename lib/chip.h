@@ -1,5 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+
+#ifndef SCREEN_WIDTH
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 32
+#endif
 
 uint8_t memory[4096]; // 4KB, packed per 8 bits
 uint8_t display[SCREEN_WIDTH][SCREEN_HEIGHT]; // Could possibly be optimized by dividing by 8 and doing it bitwise.
@@ -55,14 +61,14 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
         // Too lazy to turn this into a function.
         // Turn the spriteRow into an array of 'bits'.
         uint8_t spriteArray[8] = {
-            (spriteRow >> 7) % 2,
-            (spriteRow >> 6) % 2,
-            (spriteRow >> 5) % 2,
-            (spriteRow >> 4) % 2,
-            (spriteRow >> 3) % 2,
-            (spriteRow >> 2) % 2,
-            (spriteRow >> 1) % 2,
-            spriteRow % 2
+            (uint8_t)((spriteRow >> 7) % 2),
+            (uint8_t)((spriteRow >> 6) % 2),
+            (uint8_t)((spriteRow >> 5) % 2),
+            (uint8_t)((spriteRow >> 4) % 2),
+            (uint8_t)((spriteRow >> 3) % 2),
+            (uint8_t)((spriteRow >> 2) % 2),
+            (uint8_t)((spriteRow >> 1) % 2),
+            (uint8_t)(spriteRow % 2)
         };
         indexreg++;
 
