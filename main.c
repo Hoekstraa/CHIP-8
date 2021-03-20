@@ -3,19 +3,12 @@
 #include <time.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "font.h"
-
-void render();
-
-SDL_Window *window = 0; // Global window
-SDL_Renderer *renderer = 0; // Global renderer
-
-#define WINDOW_WIDTH 512
-#define WINDOW_HEIGHT 256
-#define WINDOW_NAME "CHIP-8"
+#include "lib/font.h"
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
+#include "lib/display.h"
+
 uint8_t memory[4096]; // 4KB, packed per 8 bits
 uint8_t display[SCREEN_WIDTH][SCREEN_HEIGHT]; // Could possibly be optimized by dividing by 8 and doing it bitwise.
 uint16_t programcounter = 0x200; // Programs start at hexadecimal 200, dec 512.
@@ -24,7 +17,6 @@ uint16_t indexreg = 0;
 //uint8_t delaytimer = 0;
 //uint8_t soundtimer = 0;
 uint8_t registers[16];
-SDL_Texture *screenTexture = 0;
 
 //Helper function
 
@@ -131,7 +123,6 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
         ++vy; // Next row.
         if(vy >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
     }
-    render();
 }
 
 // Return current instruction to be ran. Also, shift programcounter to next instruction.
@@ -207,65 +198,6 @@ void cpu()
 }
 //=============
 
-void initSDL()
-{
-    //Initialize SDL
-    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-    {
-        printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
-        exit(1);
-    }
-    //Create window
-    window = SDL_CreateWindow(WINDOW_NAME, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN );
-    if( window == 0 )
-    {
-        printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
-        SDL_Quit();
-        exit(2);
-    }
-
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if( renderer == 0 )
-    {
-        printf( "Renderer could not be created! SDL_Error: %s\n", SDL_GetError() );
-        SDL_Quit();
-        exit(3);
-    }
-    SDL_RenderSetIntegerScale(renderer, 1);
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH,SCREEN_HEIGHT);
-
-    screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
-    if( screenTexture == 0 )
-    {
-        printf( "map texture could not be created! SDL_Error: %s\n", SDL_GetError() );
-        SDL_Quit();
-        exit(4);
-    }
-}
-
-void render()
-{
-    // Clear everything.
-    SDL_DestroyTexture(screenTexture);
-    screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-    SDL_RenderClear(renderer);
-    // -----------------
-
-    SDL_SetRenderTarget(renderer, screenTexture);
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-
-    for(int x = 0; x < SCREEN_WIDTH; x++)
-        for(int y = 0; y < SCREEN_HEIGHT; y++)
-            if(display[x][y] == 1)
-                SDL_RenderDrawPoint(renderer,x, y);
-
-    SDL_SetRenderTarget(renderer, NULL);
-    SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
-    // Present to screen
-    SDL_RenderPresent(renderer);
-}
-
 int handleEvents()
 {
     // Get the next event
@@ -290,20 +222,21 @@ int handleEvents()
 
 int main(int argc, char ** argv)
 {
-    initSDL(); // Create screen, etc.
+    initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
     setfont(memory); // Set CHIP-8 font in memory.
-    load_into_mem("ibm.ch8"); // Load in program.
+    load_into_mem("test_opcode.ch8"); // Load in program.
     // Make the texture to render to.
-    screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    render(); // Clear screen
+    //screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    //render(); // Clear screen
 
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
-        printf("\n%i\n", programcounter);
-        render();
+        //printf("\n%i\n", programcounter);
+        render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
         cpu();
-        sleep(1);
+        //sleep(1);
     }
 
     SDL_Quit();
