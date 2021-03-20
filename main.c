@@ -224,12 +224,7 @@ int main(int argc, char ** argv)
 {
     initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
     setfont(memory); // Set CHIP-8 font in memory.
-    load_into_mem("test_opcode.ch8"); // Load in program.
-    // Make the texture to render to.
-
-    //screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    //render(); // Clear screen
+    load_into_mem("roms/test_opcode.ch8"); // Load in program.
 
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
