@@ -49,11 +49,12 @@ void render(int screenwidth, int screenheight, uint8_t display[][screenheight])
     // Clear everything.
     SDL_DestroyTexture(screenTexture);
     screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, screenwidth, screenheight);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_SetRenderDrawColor(renderer, 0x33, 0x33, 0x55, 0xFF);
     SDL_RenderClear(renderer);
     // -----------------
 
     SDL_SetRenderTarget(renderer, screenTexture);
+    SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 
     for(int x = 0; x < screenwidth; x++)

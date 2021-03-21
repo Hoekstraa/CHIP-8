@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <time.h>
+#include <stdlib.h>
+
 #ifndef SCREEN_WIDTH
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
@@ -58,6 +61,7 @@ void cls()
         for(int y = 0; y < SCREEN_HEIGHT; y++)
             display[x][y] = 0;
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
+    puts("Cleared screen");
 }
 
 // Jump to index, e.g. set programcounter to index
@@ -106,6 +110,12 @@ void addreg(uint8_t reg, uint8_t val)
 void setindex(uint16_t index)
 {
     indexreg = index;
+}
+
+// Get a random number, awesome!
+void randval(uint8_t x, uint8_t val)
+{
+    registers[x] = rand() & val;
 }
 
 void bwset(uint8_t x, uint8_t y)
@@ -231,6 +241,17 @@ void addindex(uint8_t x)
 {
     if ((indexreg + registers[x]) > 0x0fff) ;
     else indexreg += registers[x];
+    //indexreg += registers[x];
+}
+
+void waitkey(uint8_t x)
+{
+    int keypressed = 0;
+
+    for(int i = 0; i < 16; i++)
+        if(keys[i] == 1) keypressed = 1;
+
+    if(!keypressed) programcounter -= 2;
 }
 
 void jmpress(uint8_t x)
@@ -341,8 +362,8 @@ void decode(uint16_t op)
         printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     case(0xC):
-        //random(nn);
-        printf("Not implemented: %x %x %x %x\n", i,x,y,n);
+        randval(x, nn);
+        //printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     case(0xD):
         draw(x, y, n);
@@ -368,7 +389,8 @@ void decode(uint16_t op)
             //addindex(x);
             break;
         case(0x0A):
-            printf("Not implemented: %x %x %x %x\n", i,x,y,n);
+            waitkey(x);
+            //printf("Not implemented: %x %x %x %x\n", i,x,y,n);
             break;
         case(0x29):
             indexreg = 0; // Set index to location of font

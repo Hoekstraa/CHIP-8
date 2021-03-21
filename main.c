@@ -36,48 +36,48 @@ void load_into_mem(char* filename)
     fclose(f);
 }
 
-void handleKey(SDL_Keycode symbol)
+void handleKey(SDL_Keycode symbol, int state)
 {
-    for(int i = 0; i < 16; i++)
-        keys[i] = 0;
-
     if(symbol == SDLK_x)
-        keys[0] = 1;
+        keys[0] = state;
     if(symbol == SDLK_1)
-        keys[1] = 1;
+        keys[1] = state;
     if(symbol == SDLK_2)
-        keys[2] = 1;
+        keys[2] = state;
     if(symbol == SDLK_3)
-        keys[3] = 1;
+        keys[3] = state;
     if(symbol == SDLK_q)
-        keys[4] = 1;
+        keys[4] = state;
     if(symbol == SDLK_w)
-        keys[5] = 1;
+        keys[5] = state;
     if(symbol == SDLK_e)
-        keys[6] = 1;
+        keys[6] = state;
     if(symbol == SDLK_a)
-        keys[7] = 1;
+        keys[7] = state;
     if(symbol == SDLK_s)
-        keys[8] = 1;
+        keys[8] = state;
     if(symbol == SDLK_d)
-        keys[9] = 1;
+        keys[9] = state;
     if(symbol == SDLK_z)
-        keys[0xA] = 1;
+        keys[0xA] = state;
     if(symbol == SDLK_c)
-        keys[0xB] = 1;
+        keys[0xB] = state;
     if(symbol == SDLK_4)
-        keys[0xC] = 1;
+        keys[0xC] = state;
     if(symbol == SDLK_r)
-        keys[0xD] = 1;
+        keys[0xD] = state;
     if(symbol == SDLK_f)
-        keys[0xE] = 1;
+        keys[0xE] = state;
     if(symbol == SDLK_v)
-        keys[0xF] = 1;
+        keys[0xF] = state;
 }
 
 
 int handleEvents()
 {
+    //for(int i = 0; i < 16; i++)
+    //    keys[i] = 0;
+
     // Get the next event
     SDL_Event event;
     if (SDL_PollEvent(&event))
@@ -90,9 +90,12 @@ int handleEvents()
             if(event.key.keysym.sym == SDLK_ESCAPE)
                 return 0; // Break out of the gameloop on quit
             else
-                handleKey(event.key.keysym.sym);
+                handleKey(event.key.keysym.sym, 1);
             return 1;
         }
+        if (event.type == SDL_KEYUP)
+            handleKey(event.key.keysym.sym, 0);
+
     }
     return 1;
 }
@@ -110,6 +113,8 @@ int main(int argc, char ** argv)
 
     initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display); // Set screen to black.
+
+    srand(time(NULL)); // Needed for CXNN instruction in CHIP-8 CPU.
 
     Uint64 nowTime = SDL_GetPerformanceCounter();
     Uint64 lastTime = 0;
