@@ -23,9 +23,9 @@ uint8_t registers[16]; // General use registers
 uint8_t keys[16]; // All keys on the keypad. Get set by SDL if key is pressed.
 
 uint16_t stack[16]; // Used for subroutines
-uint8_t stackp = 0; // How full the stack is.
+uint8_t stackp = 0; // Pointer to last/top item in stack.
 
-// Push on subroutine stack
+// Helper function: Push on subroutine stack
 void push(uint16_t val)
 {
     ++stackp;
@@ -33,7 +33,7 @@ void push(uint16_t val)
     stack[stackp] = val;
 }
 
-// Pop from subroutine stack
+// Helper function: Pop from subroutine stack
 uint16_t pop()
 {
     --stackp;
@@ -41,103 +41,92 @@ uint16_t pop()
     return stack[stackp+1];
 }
 
-// Run subroutine
-void call(uint16_t index)
-{
-    push(programcounter);
-    programcounter = index;
-}
-
-// Pop subroutine from stack
-void ret()
-{
-    programcounter = pop();
-}
-
-// Clear screen
+// 00E0: Clear screen
 void cls()
 {
     for(int x = 0; x < SCREEN_WIDTH; x++)
         for(int y = 0; y < SCREEN_HEIGHT; y++)
             display[x][y] = 0;
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
-    puts("Cleared screen");
 }
 
-// Jump to index, e.g. set programcounter to index
+// 00EE: Pop subroutine from stack
+void ret()
+{
+    programcounter = pop();
+}
+
+// 1NNN: Jump to index, e.g. set programcounter to index
 void jump(uint16_t index)
 {
     programcounter = index;
 }
 
-// Jump one instruction if value of registers[reg] == val
+// 2NNN: Run subroutine
+void call(uint16_t index)
+{
+    push(programcounter);
+    programcounter = index;
+}
+
+// 3XNN: Jump one instruction if value of registers[reg] == val
 void jumpeq(uint8_t reg, uint8_t val)
 {
     if(registers[reg] == val)
         programcounter += 2;
 }
 
-// Jump one instruction if value of registers[reg] != val
+// 4XNN: Jump one instruction if value of registers[reg] != val
 void jumpnq(uint8_t reg, uint8_t val)
 {
     if(registers[reg] != val)
         programcounter += 2;
 }
 
-// Jump one instruction if value of registers[x] == registers[y]
+// 5XY0: Jump one instruction if value of registers[x] == registers[y]
 void jumpreq(uint8_t x, uint8_t y)
 {
     if(registers[x] == registers[y])
         programcounter += 2;
 }
-// Jump one instruction if value of registers[x] != registers[y]
-void jumprnq(uint8_t x, uint8_t y)
-{
-    if(registers[x] != registers[y])
-        programcounter += 2;
-}
 
+// 6XNN: Set register X to value NN
 void setreg(uint8_t reg, uint8_t val)
 {
     registers[reg] = val;
 }
 
+// 7XNN: Add NN to the value of registers[x]
 void addreg(uint8_t reg, uint8_t val)
 {
     registers[reg] += val;
 }
 
-void setindex(uint16_t index)
-{
-    indexreg = index;
-}
-
-// Get a random number, awesome!
-void randval(uint8_t x, uint8_t val)
-{
-    registers[x] = rand() & val;
-}
-
+// 8XY0: Set register X to the value of register Y
 void bwset(uint8_t x, uint8_t y)
 {
     registers[x] = registers[y];
 }
 
+// 8XY1: Bitwise OR
 void bwor(uint8_t x, uint8_t y)
 {
     registers[x] = registers[x] | registers[y];
 }
 
+// 8XY2: Bitwise AND
 void bwand(uint8_t x, uint8_t y)
 {
     registers[x] = registers[x] & registers[y];
 }
 
+// 8XY3: Bitwise XOR
 void bwxor(uint8_t x, uint8_t y)
 {
     registers[x] = registers[x] ^ registers[y];
 }
 
+// 8XY4: Add register y to register x. Set register 0xF to 1 if register x overflows.
 void addcheck(uint8_t x, uint8_t y)
 {
     uint16_t c = (uint16_t)registers[x] + registers[y];
@@ -146,15 +135,16 @@ void addcheck(uint8_t x, uint8_t y)
     registers[x] = c;
 }
 
+// 8XY5: reg x - reg y, set 0xF if X > Y, otherwise unset 0xF.
 void sub(uint8_t x, uint8_t y)
 {
     if(registers[x] > registers[y]) registers[0xF] = 1;
     else registers[0xF] = 0;
 
     registers[x] = registers[x] - registers[y];
-
 }
 
+// 8XY7: reg y - reg x, set 0xF if X > Y, otherwise unset 0xF.
 void subrev(uint8_t x, uint8_t y)
 {
     if(registers[x] > registers[y]) registers[0xF] = 1;
@@ -163,6 +153,7 @@ void subrev(uint8_t x, uint8_t y)
     registers[x] = registers[y] - registers[x];
 }
 
+// 8XY6: Shift bits one to the right. set reg 0xF to the bit that's shifted out
 void shiftr(uint8_t x, uint8_t y)
 {
     registers[x] = registers[y];
@@ -170,6 +161,7 @@ void shiftr(uint8_t x, uint8_t y)
     registers[x] = registers[x] >> 1;
 }
 
+// 8XYE: Shift bits one to the left. set reg 0xF to the bit that's shifted out
 void shiftl(uint8_t x, uint8_t y)
 {
     registers[x] = registers[y];
@@ -177,29 +169,47 @@ void shiftl(uint8_t x, uint8_t y)
     registers[x] = registers[x] << 1;
 }
 
-void toDec(uint8_t x)
+// 9XY0: Jump one instruction if value of registers[x] != registers[y]
+void jumprnq(uint8_t x, uint8_t y)
 {
-    memory[indexreg] = (registers[x]/100) % 10;
-    memory[indexreg + 1] = (registers[x]/10) % 10;
-    memory[indexreg + 2] = registers[x] % 10;
+    if(registers[x] != registers[y])
+        programcounter += 2;
 }
 
+// ANNN: Set index register to NNN
+void setindex(uint16_t val)
+{
+    indexreg = val;
+}
 
-void draw(uint8_t x, uint8_t y, uint8_t n)
+// BNNN: Jump to (NNN + reg 0)
+void jumpoffset(uint16_t index)
+{
+    jump(index + registers[0]);
+}
+
+// CXNN: Get a random number, awesome! Put it in register x.
+void randval(uint8_t x, uint8_t val)
+{
+    registers[x] = rand() & val;
+}
+
+// DXYN: Draw stuff. Look at spec for detailed info.
+void draw(uint8_t x, uint8_t y, uint8_t height)
 {
     // Value of register y. If greater than the screenheight, 'overflow' the screen.
-    uint8_t vy = registers[y] % SCREEN_HEIGHT;
+    const uint8_t vy = registers[y] % SCREEN_HEIGHT;
+    // Value of register x. If greater than the screenwidth, 'overflow' the screen.
+    const uint8_t vx = registers[x] % SCREEN_WIDTH;
+
     // Reset the F register, as per hardware definition.
     registers[0xF] = 0;
 
     // Loop through n, as per hardware definition.
-    for(; n > 0; n--)
+    for (int row = 0; row < height; ++row)
     {
-        // Value of register x. If greater than the screenwidth, 'overflow' the screen.
-        uint8_t vx = registers[x] % SCREEN_WIDTH;
-
         // Get row of bytes to print to the screen.
-        const uint8_t spriteRow = memory[indexreg];
+        const uint8_t spriteRow = memory[indexreg + row];
         // Too lazy to turn this into a function.
         // Turn the spriteRow into an array of 'bits'.
         uint8_t spriteArray[8] = {
@@ -212,38 +222,40 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
             (uint8_t)((spriteRow >> 1) % 2),
             (uint8_t)(spriteRow % 2)
         };
-        indexreg++;
 
         for(uint8_t i = 0; i < 8; i++)
         {
-            if(spriteArray[i] == 1 && display[vx][vy] == 1)
+            if(spriteArray[i] == 1 && display[vx+i][vy+row] == 1)
             {
-                display[vx][vy] = 0;
+                display[vx+i][vy+row] = 0;
                 registers[0xF] = 1;
             }
-            if(spriteArray[i] == 1 && display[vx][vy] == 0)
+            if(spriteArray[i] == 1 && display[vx+i][vy+row] == 0)
             {
-                display[vx][vy] = 1;
+                display[vx+i][vy+row] = 1;
             }
 
-            ++vx; // Next column.
-            if(vx >= SCREEN_WIDTH) break; // Prevent going past screenlimits
+            if(vx+i >= SCREEN_WIDTH) break; // Prevent going past screenlimits
         }
-        ++vy; // Next row.
-        if(vy >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
+        if(vy+row >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
     }
 
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
 }
 
-// TODO: POSSIBLY INCORRECT, TEST IT
-void addindex(uint8_t x)
+// EX9E: Skip an instruction if key x is being pressed.
+void jmpress(uint8_t x)
 {
-    if ((indexreg + registers[x]) > 0x0fff) ;
-    else indexreg += registers[x];
-    //indexreg += registers[x];
+    if(keys[x]) programcounter += 2;
 }
 
+// EX9E: Skip an instruction if key x is NOT being pressed.
+void jmnpress(uint8_t x)
+{
+    if(!keys[x]) programcounter += 2;
+}
+
+// FX0A: Wait till a key is pressed.
 void waitkey(uint8_t x)
 {
     int keypressed = 0;
@@ -254,30 +266,36 @@ void waitkey(uint8_t x)
     if(!keypressed) programcounter -= 2;
 }
 
-void jmpress(uint8_t x)
+// FX1E: Add value of reg x to the index register
+void addindex(uint8_t x)
 {
-    if(keys[x]) programcounter += 2;
+    indexreg += registers[x];
 }
 
-void jmnpress(uint8_t x)
+// FX33: Turn the value of reg x into a decimal.
+// Put each digit seperately into index, index+1 and index+2.
+void toDec(uint8_t x)
 {
-    if(!keys[x]) programcounter += 2;
+    memory[indexreg] = (registers[x]/100) % 10;
+    memory[indexreg + 1] = (registers[x]/10) % 10;
+    memory[indexreg + 2] = registers[x] % 10;
 }
 
-// Store registers to memory
+// FX55: Store registers to memory
 void store(uint8_t x)
 {
     for(int i = 0; i <= x; i++)
         memory[indexreg + i] = registers[i];
 }
 
-// Load registers from memory
+// FX65: Load registers from memory
 void load(uint8_t x)
 {
     for(int i = 0; i <=x; i++)
         registers[i] = memory[indexreg + i];
 }
 
+// Decode ops into actionable functions.
 void decode(uint16_t op)
 {
     //printf("Got op %x\n", op);
@@ -290,7 +308,7 @@ void decode(uint16_t op)
     const uint8_t nn = op - ((uint16_t)i << 12) - ((uint16_t)x << 8); // variable
     const uint16_t nnn = op - ((uint16_t)i << 12); // variable
 
-    //printf(" Running op %x %x %x %x\n", i, x, y, n);
+    printf(" Running op %x %x %x %x\n", i, x, y, n);
 
     switch(i)
     {
@@ -358,12 +376,10 @@ void decode(uint16_t op)
         setindex(nnn);
         break;
     case(0xB):
-        //jumpoffset(nnn);
-        printf("Not implemented: %x %x %x %x\n", i,x,y,n);
+        jumpoffset(nnn);
         break;
     case(0xC):
         randval(x, nn);
-        //printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     case(0xD):
         draw(x, y, n);
@@ -385,12 +401,12 @@ void decode(uint16_t op)
             soundtimer = registers[x];
             break;
         case(0x1E):
-            printf("Not implemented: %x %x %x %x\n", i,x,y,n);
-            //addindex(x);
+            addindex(x);
+            //printf("Not implemented: %x %x %x %x\n", i,x,y,n);
             break;
         case(0x0A):
             waitkey(x);
-            //printf("Not implemented: %x %x %x %x\n", i,x,y,n);
+            //printf("Not tested: %x %x %x %x\n", i,x,y,n);
             break;
         case(0x29):
             indexreg = 0; // Set index to location of font
@@ -424,6 +440,7 @@ uint16_t fetch()
     return op;
 }
 
+// Decrement timers by one. Should happen roughly 60 times per second.
 void cpuDecTimers()
 {
     if (delaytimer > 0) --delaytimer;

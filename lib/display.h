@@ -60,7 +60,10 @@ void render(int screenwidth, int screenheight, uint8_t display[][screenheight])
     for(int x = 0; x < screenwidth; x++)
         for(int y = 0; y < screenheight; y++)
             if(display[x][y] == 1)
+            {
+                SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
                 SDL_RenderDrawPoint(renderer,x, y);
+            }
 
     SDL_SetRenderTarget(renderer, NULL);
     SDL_RenderCopy(renderer, screenTexture, NULL, NULL);

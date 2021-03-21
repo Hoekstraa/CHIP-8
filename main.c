@@ -126,8 +126,8 @@ int main(int argc, char ** argv)
         nowTime = SDL_GetPerformanceCounter();
         deltaTime = (double)((nowTime - lastTime)*1000 / (double)SDL_GetPerformanceFrequency());
         //printf("\n%i\n", programcounter);
-        if(deltaTime > 0.003) cpu();
-        if(deltaTime > 0.016) cpuDecTimers();
+        if(deltaTime > (0.003 )) cpu();
+        if(deltaTime > (0.016 )) cpuDecTimers();
         //sleep(1);
     }
 
