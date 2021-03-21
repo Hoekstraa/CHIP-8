@@ -1,20 +1,54 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef SCREEN_WIDTH
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
 #endif
 
+void render(int screenwidth, int screenheight, uint8_t disp[][screenheight]);
+
 uint8_t memory[4096]; // 4KB, packed per 8 bits
 uint8_t display[SCREEN_WIDTH][SCREEN_HEIGHT]; // Could possibly be optimized by dividing by 8 and doing it bitwise.
 uint16_t programcounter = 0x200; // Programs start at hexadecimal 200, dec 512.
 uint16_t indexreg = 0;
-//uint16_t stack[16];
-//uint8_t delaytimer = 0;
-//uint8_t soundtimer = 0;
-uint8_t registers[16];
+uint8_t delaytimer = 0;
+uint8_t soundtimer = 0;
+uint8_t registers[16]; // General use registers
+
+uint16_t stack[16]; // Used for subroutines
+uint8_t stackp = 0; // How full the stack is.
+
+// Push on subroutine stack
+void push(uint16_t val)
+{
+    ++stackp;
+    if(stackp == 16) puts("STACK OVERFLOW");
+    stack[stackp] = val;
+}
+
+// Pop from subroutine stack
+uint16_t pop()
+{
+    --stackp;
+    if(stackp < 0) puts("STACK UNDERFLOW");
+    return stack[stackp+1];
+}
+
+// Run subroutine
+void call(uint16_t index)
+{
+    push(programcounter);
+    programcounter = index;
+}
+
+// Pop subroutine from stack
+void ret()
+{
+    programcounter = pop();
+}
 
 // Clear screen
 void cls()
@@ -26,6 +60,33 @@ void cls()
 void jump(uint16_t index)
 {
     programcounter = index;
+}
+
+// Jump one instruction if value of registers[reg] == val
+void jumpeq(uint8_t reg, uint8_t val)
+{
+    if(registers[reg] == val)
+        programcounter += 2;
+}
+
+// Jump one instruction if value of registers[reg] != val
+void jumpnq(uint8_t reg, uint8_t val)
+{
+    if(registers[reg] != val)
+        programcounter += 2;
+}
+
+// Jump one instruction if value of registers[x] == registers[y]
+void jumpreq(uint8_t x, uint8_t y)
+{
+    if(registers[x] == registers[y])
+        programcounter += 2;
+}
+// Jump one instruction if value of registers[x] != registers[y]
+void jumprnq(uint8_t x, uint8_t y)
+{
+    if(registers[x] != registers[y])
+        programcounter += 2;
 }
 
 void setreg(uint8_t reg, uint8_t val)
@@ -42,6 +103,34 @@ void setindex(uint16_t index)
 {
     indexreg = index;
 }
+
+void bwset(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[y];
+}
+
+void bwor(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[x] | registers[y];
+}
+
+void bwand(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[x] & registers[y];
+}
+
+void bwxor(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[x] ^ registers[y];
+}
+
+void toDec(uint8_t x)
+{
+    memory[indexreg] = (registers[x]/100) % 10;
+    memory[indexreg + 1] = (registers[x]/10) % 10;
+    memory[indexreg + 2] = registers[x] % 10;
+}
+
 
 void draw(uint8_t x, uint8_t y, uint8_t n)
 {
@@ -94,21 +183,23 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
 }
 
-// Return current instruction to be ran. Also, shift programcounter to next instruction.
-uint16_t fetch()
+// Store registers to memory
+void store(uint8_t x)
 {
-    const uint8_t a = memory[programcounter];
-    const uint8_t b = memory[programcounter + 1];
+    for(int i = 0; i <= x; i++)
+        memory[indexreg + i] = registers[i];
+}
 
-    uint16_t op = (a << 8) + b; // Morph 2 bytes into one 16-bit instruction
-
-    programcounter += 2; // Set programcounter to next op.
-    return op;
+// Load registers from memory
+void load(uint8_t x)
+{
+    for(int i = 0; i <=x; i++)
+        registers[i] = memory[indexreg + i];
 }
 
 void decode(uint16_t op)
 {
-    printf("Got op %x\n", op);
+    //printf("Got op %x\n", op);
 
     // Deconstruct instruction.
     const uint8_t i = op >> 12; // first nibble, instruction
@@ -123,37 +214,131 @@ void decode(uint16_t op)
     switch(i)
     {
     case(0x0):
-        //if(x != 0) sys(nnn);
-        if(n == 0) {
-            cls();
-            puts("cls");
-        }
-        //if(n == 0xE) ret();
+        if(nnn == 0x0E0) cls();
+        else if(nnn == 0x0EE) ret();
+        else puts("This instruction is not implemented, since we're not running on a COSMAC or DREAM computer!");
         break;
     case(0x1):
         jump(nnn);
-        puts("jump");
+        break;
+    case(0x2):
+        call(nnn);
+    case(0x3):
+        jumpeq(x,nn);
+        break;
+    case(0x4):
+        jumpnq(x,nn);
+        break;
+    case(0x5):
+        jumpreq(x,y);
         break;
     case(0x6):
         setreg(x,nn);
-        puts("setreg");
         break;
     case(0x7):
         addreg(x,nn);
-        puts("addreg");
+        break;
+    case(0x8):
+        switch(n)
+        {
+        case(0):
+            bwset(x,y);
+            break;
+        case(1):
+            bwor(x,y);
+            break;
+        case(2):
+            bwand(x,y);
+            break;
+        case(3):
+            bwxor(x,y);
+            break;
+        case(4):
+            //addcheck(x,y);
+            break;
+        case(5):
+            //sub(x,y);
+            break;
+        case(6):
+            //shiftr(x,y);
+            break;
+        case(7):
+            //subrev(x,y);
+            break;
+        case(0xE):
+            //shiftl(x,y);
+            break;
+        }
+        break;
+    case(0x9):
+        jumprnq(x,y);
         break;
     case(0xA):
         setindex(nnn);
-        puts("setindex");
+        break;
+    case(0xB):
+        //jumpoffset(nnn);
+        break;
+    case(0xC):
+        //random(nn);
         break;
     case(0xD):
         draw(x, y, n);
-        puts("draw");
+        break;
+    //case(0xE):
+    //    break;
+    case(0xF):
+        switch(nn)
+        {
+        case(0x07):
+            registers[x] = delaytimer;
+            break;
+        case(0x15):
+            delaytimer = registers[x];
+            break;
+        case(0x18):
+            soundtimer = registers[x];
+            break;
+        case(0x1E):
+            break;
+        case(0x0A):
+            break;
+        case(0x29):
+            indexreg = 0; // Set index to location of font
+            break;
+        case(0x33):
+            toDec(x);
+            break;
+        case(0x55):
+            store(x);
+            break;
+        case(0x65):
+            load(x);
+            break;
+        }
         break;
     default:
-        printf("Not implemented: %x\n", i);
+        printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     }
+}
+
+// Return current instruction to be ran. Also, shift programcounter to next instruction.
+uint16_t fetch()
+{
+    const uint8_t a = memory[programcounter];
+    const uint8_t b = memory[programcounter + 1];
+
+    uint16_t op = (a << 8) + b; // Morph 2 bytes into one 16-bit instruction
+
+    programcounter += 2; // Set programcounter to next op.
+    return op;
+}
+
+void cpuDecTimers()
+{
+    if (delaytimer > 0) --delaytimer;
+    if (soundtimer > 0) --soundtimer;
 }
 
 // Emulate one 'tick' of the CPU.

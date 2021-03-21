@@ -71,10 +71,18 @@ int main(int argc, char ** argv)
     initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT); // Create screen, etc.
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display); // Set screen to black.
 
+    Uint64 nowTime = SDL_GetPerformanceCounter();
+    Uint64 lastTime = 0;
+    double deltaTime = 0;
+
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
+        lastTime = nowTime;
+        nowTime = SDL_GetPerformanceCounter();
+        deltaTime = (double)((nowTime - lastTime)*1000 / (double)SDL_GetPerformanceFrequency());
         //printf("\n%i\n", programcounter);
-        cpu();
+        if(deltaTime > 0.003) cpu();
+        if(deltaTime > 0.016) cpuDecTimers();
         //sleep(1);
     }
 
