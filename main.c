@@ -72,7 +72,6 @@ void handleKey(SDL_Keycode symbol, int state)
         keys[0xF] = state;
 }
 
-
 int handleEvents()
 {
     //for(int i = 0; i < 16; i++)
@@ -95,7 +94,6 @@ int handleEvents()
         }
         if (event.type == SDL_KEYUP)
             handleKey(event.key.keysym.sym, 0);
-
     }
     return 1;
 }
@@ -117,22 +115,28 @@ int main(int argc, char ** argv)
     srand(time(NULL)); // Needed for CXNN instruction in CHIP-8 CPU.
 
     //Uint64 nowTime = 0;
-    //Uint64 lastTime = 0;
-    //double deltaTime = 0;
+    Uint64 lastExecution = 0;
+    Uint64 lastDec = 0;
+    Uint64 nowTime = 0;
+    double deltaTime = 0;
 
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
-        //nowTime = SDL_GetPerformanceCounter();
-        //deltaTime += (double)(nowTime*1000 / (double)SDL_GetPerformanceFrequency());
-        //printf("%f\n", deltaTime);
-        //printf("\n%i\n", programcounter);
-        //if(deltaTime > (0.003 * 100))
-        //{
+        nowTime = SDL_GetPerformanceCounter();
+        deltaTime = (double)((nowTime - lastExecution)*1000 / (double)SDL_GetPerformanceFrequency());
+        printf("%f\n",deltaTime);
+        if(deltaTime > 3)
+        {
+            lastExecution = SDL_GetPerformanceCounter();
             cpu();
+        }
+
+        deltaTime = (double)((nowTime - lastDec)*1000 / (double)SDL_GetPerformanceFrequency());
+        if(deltaTime > 16)
+        {
+            lastDec = SDL_GetPerformanceCounter();
             cpuDecTimers();
-            //deltaTime = 0;
-        //}
-        //SDL_Delay(100);
+        }
     }
 
     SDL_Quit();

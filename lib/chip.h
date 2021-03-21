@@ -235,20 +235,20 @@ void draw(uint8_t x, uint8_t y, uint8_t height)
 // EX9E: Skip an instruction if key x is being pressed.
 void jmpress(uint8_t x)
 {
-    if(keys[x]) programcounter += 2;
+    if(keys[registers[x]]) programcounter += 2;
 }
 
 // EX9E: Skip an instruction if key x is NOT being pressed.
 void jmnpress(uint8_t x)
 {
-    if(!keys[x]) programcounter += 2;
+    if(!keys[registers[x]]) programcounter += 2;
 }
 
 // FX0A: Wait till a key is pressed.
 void waitkey(uint8_t x)
 {
     for(int i = 0; i < 16; i++)
-        if(keys[i] == 1)
+        if(keys[i])
         {
             registers[x] = i;
             return;
@@ -299,7 +299,7 @@ void decode(uint16_t op)
     const uint8_t nn = op - ((uint16_t)i << 12) - ((uint16_t)x << 8); // variable
     const uint16_t nnn = op - ((uint16_t)i << 12); // variable
 
-    printf(" Running op %x %x %x %x\n", i, x, y, n);
+    //printf(" Running op %x %x %x %x\n", i, x, y, n);
 
     switch(i)
     {
