@@ -36,6 +36,46 @@ void load_into_mem(char* filename)
     fclose(f);
 }
 
+void handleKey(SDL_Keycode symbol)
+{
+    for(int i = 0; i < 16; i++)
+        keys[i] = 0;
+
+    if(symbol == SDLK_x)
+        keys[0] = 1;
+    if(symbol == SDLK_1)
+        keys[1] = 1;
+    if(symbol == SDLK_2)
+        keys[2] = 1;
+    if(symbol == SDLK_3)
+        keys[3] = 1;
+    if(symbol == SDLK_q)
+        keys[4] = 1;
+    if(symbol == SDLK_w)
+        keys[5] = 1;
+    if(symbol == SDLK_e)
+        keys[6] = 1;
+    if(symbol == SDLK_a)
+        keys[7] = 1;
+    if(symbol == SDLK_s)
+        keys[8] = 1;
+    if(symbol == SDLK_d)
+        keys[9] = 1;
+    if(symbol == SDLK_z)
+        keys[0xA] = 1;
+    if(symbol == SDLK_c)
+        keys[0xB] = 1;
+    if(symbol == SDLK_4)
+        keys[0xC] = 1;
+    if(symbol == SDLK_r)
+        keys[0xD] = 1;
+    if(symbol == SDLK_f)
+        keys[0xE] = 1;
+    if(symbol == SDLK_v)
+        keys[0xF] = 1;
+}
+
+
 int handleEvents()
 {
     // Get the next event
@@ -50,8 +90,8 @@ int handleEvents()
             if(event.key.keysym.sym == SDLK_ESCAPE)
                 return 0; // Break out of the gameloop on quit
             else
-                //handleKey(event.key.keysym.sym);
-                return 1;
+                handleKey(event.key.keysym.sym);
+            return 1;
         }
     }
     return 1;

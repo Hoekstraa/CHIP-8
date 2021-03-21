@@ -17,6 +17,7 @@ uint16_t indexreg = 0;
 uint8_t delaytimer = 0;
 uint8_t soundtimer = 0;
 uint8_t registers[16]; // General use registers
+uint8_t keys[16]; // All keys on the keypad. Get set by SDL if key is pressed.
 
 uint16_t stack[16]; // Used for subroutines
 uint8_t stackp = 0; // How full the stack is.
@@ -53,7 +54,10 @@ void ret()
 // Clear screen
 void cls()
 {
-    memset(display, 0, sizeof(display));
+    for(int x = 0; x < SCREEN_WIDTH; x++)
+        for(int y = 0; y < SCREEN_HEIGHT; y++)
+            display[x][y] = 0;
+    render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
 }
 
 // Jump to index, e.g. set programcounter to index
@@ -124,6 +128,45 @@ void bwxor(uint8_t x, uint8_t y)
     registers[x] = registers[x] ^ registers[y];
 }
 
+void addcheck(uint8_t x, uint8_t y)
+{
+    uint16_t c = (uint16_t)registers[x] + registers[y];
+    if(c > 255) registers[0xF] = 1;
+    else registers[0xF] = 0;
+    registers[x] = c;
+}
+
+void sub(uint8_t x, uint8_t y)
+{
+    if(registers[x] > registers[y]) registers[0xF] = 1;
+    else registers[0xF] = 0;
+
+    registers[x] = registers[x] - registers[y];
+
+}
+
+void subrev(uint8_t x, uint8_t y)
+{
+    if(registers[x] > registers[y]) registers[0xF] = 1;
+    else registers[0xF] = 0;
+
+    registers[x] = registers[y] - registers[x];
+}
+
+void shiftr(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[y];
+    registers[0xF] = (uint8_t)(x % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+    registers[x] = registers[x] >> 1;
+}
+
+void shiftl(uint8_t x, uint8_t y)
+{
+    registers[x] = registers[y];
+    registers[0xF] = (uint8_t)((x >> 7) % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+    registers[x] = registers[x] << 1;
+}
+
 void toDec(uint8_t x)
 {
     memory[indexreg] = (registers[x]/100) % 10;
@@ -181,6 +224,23 @@ void draw(uint8_t x, uint8_t y, uint8_t n)
     }
 
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
+}
+
+// TODO: POSSIBLY INCORRECT, TEST IT
+void addindex(uint8_t x)
+{
+    if ((indexreg + registers[x]) > 0x0fff) ;
+    else indexreg += registers[x];
+}
+
+void jmpress(uint8_t x)
+{
+    if(keys[x]) programcounter += 2;
+}
+
+void jmnpress(uint8_t x)
+{
+    if(!keys[x]) programcounter += 2;
 }
 
 // Store registers to memory
@@ -254,19 +314,19 @@ void decode(uint16_t op)
             bwxor(x,y);
             break;
         case(4):
-            //addcheck(x,y);
+            addcheck(x,y);
             break;
         case(5):
-            //sub(x,y);
+            sub(x,y);
             break;
         case(6):
-            //shiftr(x,y);
+            shiftr(x,y);
             break;
         case(7):
-            //subrev(x,y);
+            subrev(x,y);
             break;
         case(0xE):
-            //shiftl(x,y);
+            shiftl(x,y);
             break;
         }
         break;
@@ -278,15 +338,19 @@ void decode(uint16_t op)
         break;
     case(0xB):
         //jumpoffset(nnn);
+        printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     case(0xC):
         //random(nn);
+        printf("Not implemented: %x %x %x %x\n", i,x,y,n);
         break;
     case(0xD):
         draw(x, y, n);
         break;
-    //case(0xE):
-    //    break;
+    case(0xE):
+        if(nn == 0x9e) jmpress(x);
+        if(nn == 0xA1) jmnpress(x);
+        break;
     case(0xF):
         switch(nn)
         {
@@ -300,8 +364,11 @@ void decode(uint16_t op)
             soundtimer = registers[x];
             break;
         case(0x1E):
+            printf("Not implemented: %x %x %x %x\n", i,x,y,n);
+            //addindex(x);
             break;
         case(0x0A):
+            printf("Not implemented: %x %x %x %x\n", i,x,y,n);
             break;
         case(0x29):
             indexreg = 0; // Set index to location of font
