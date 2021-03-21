@@ -116,19 +116,23 @@ int main(int argc, char ** argv)
 
     srand(time(NULL)); // Needed for CXNN instruction in CHIP-8 CPU.
 
-    Uint64 nowTime = SDL_GetPerformanceCounter();
-    Uint64 lastTime = 0;
-    double deltaTime = 0;
+    //Uint64 nowTime = 0;
+    //Uint64 lastTime = 0;
+    //double deltaTime = 0;
 
     while (handleEvents()) // As long as there's no quit event, handle other events and do..
     {
-        lastTime = nowTime;
-        nowTime = SDL_GetPerformanceCounter();
-        deltaTime = (double)((nowTime - lastTime)*1000 / (double)SDL_GetPerformanceFrequency());
+        //nowTime = SDL_GetPerformanceCounter();
+        //deltaTime += (double)(nowTime*1000 / (double)SDL_GetPerformanceFrequency());
+        //printf("%f\n", deltaTime);
         //printf("\n%i\n", programcounter);
-        if(deltaTime > (0.003 )) cpu();
-        if(deltaTime > (0.016 )) cpuDecTimers();
-        //sleep(1);
+        //if(deltaTime > (0.003 * 100))
+        //{
+            cpu();
+            cpuDecTimers();
+            //deltaTime = 0;
+        //}
+        //SDL_Delay(100);
     }
 
     SDL_Quit();

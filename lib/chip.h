@@ -138,34 +138,36 @@ void addcheck(uint8_t x, uint8_t y)
 // 8XY5: reg x - reg y, set 0xF if X > Y, otherwise unset 0xF.
 void sub(uint8_t x, uint8_t y)
 {
-    if(registers[x] > registers[y]) registers[0xF] = 1;
-    else registers[0xF] = 0;
+    if(registers[x] > registers[y])
+        registers[0xF] = 1;
+    else
+        registers[0xF] = 0;
 
     registers[x] = registers[x] - registers[y];
-}
-
-// 8XY7: reg y - reg x, set 0xF if X > Y, otherwise unset 0xF.
-void subrev(uint8_t x, uint8_t y)
-{
-    if(registers[x] > registers[y]) registers[0xF] = 1;
-    else registers[0xF] = 0;
-
-    registers[x] = registers[y] - registers[x];
 }
 
 // 8XY6: Shift bits one to the right. set reg 0xF to the bit that's shifted out
 void shiftr(uint8_t x, uint8_t y)
 {
     registers[x] = registers[y];
-    registers[0xF] = (uint8_t)(x % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+    registers[0xF] = (uint8_t)(registers[x] % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
     registers[x] = registers[x] >> 1;
+}
+
+// 8XY7: reg y - reg x, set 0xF if X > Y, otherwise unset 0xF.
+void subrev(uint8_t x, uint8_t y)
+{
+    if(registers[y] > registers[x]) registers[0xF] = 1;
+    else registers[0xF] = 0;
+
+    registers[x] = registers[y] - registers[x];
 }
 
 // 8XYE: Shift bits one to the left. set reg 0xF to the bit that's shifted out
 void shiftl(uint8_t x, uint8_t y)
 {
     registers[x] = registers[y];
-    registers[0xF] = (uint8_t)((x >> 7) % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+    registers[0xF] = (uint8_t)((registers[x] >> 7) % 2); // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
     registers[x] = registers[x] << 1;
 }
 
@@ -210,34 +212,21 @@ void draw(uint8_t x, uint8_t y, uint8_t height)
     {
         // Get row of bytes to print to the screen.
         const uint8_t spriteRow = memory[indexreg + row];
-        // Too lazy to turn this into a function.
-        // Turn the spriteRow into an array of 'bits'.
-        uint8_t spriteArray[8] = {
-            (uint8_t)((spriteRow >> 7) % 2),
-            (uint8_t)((spriteRow >> 6) % 2),
-            (uint8_t)((spriteRow >> 5) % 2),
-            (uint8_t)((spriteRow >> 4) % 2),
-            (uint8_t)((spriteRow >> 3) % 2),
-            (uint8_t)((spriteRow >> 2) % 2),
-            (uint8_t)((spriteRow >> 1) % 2),
-            (uint8_t)(spriteRow % 2)
-        };
 
         for(uint8_t i = 0; i < 8; i++)
         {
-            if(spriteArray[i] == 1 && display[vx+i][vy+row] == 1)
-            {
-                display[vx+i][vy+row] = 0;
-                registers[0xF] = 1;
-            }
-            if(spriteArray[i] == 1 && display[vx+i][vy+row] == 0)
-            {
-                display[vx+i][vy+row] = 1;
-            }
+            uint8_t spritePixel = (spriteRow >> (7-i)) % 2; // Get the pixelbit 'i' in row.
 
-            if(vx+i >= SCREEN_WIDTH) break; // Prevent going past screenlimits
+            if(spritePixel)
+            {
+                if (display[vx+i][vy+row])
+                    registers[0xF] = 1;
+
+                display[vx+i][vy+row] ^= 1;
+            }
+            //if(vx+i >= SCREEN_WIDTH) break; // Prevent going past screenlimits
         }
-        if(vy+row >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
+        //if(vy+row >= SCREEN_HEIGHT) break; // Prevent going past screenlimits
     }
 
     render(SCREEN_WIDTH, SCREEN_HEIGHT, display);
@@ -258,12 +247,14 @@ void jmnpress(uint8_t x)
 // FX0A: Wait till a key is pressed.
 void waitkey(uint8_t x)
 {
-    int keypressed = 0;
-
     for(int i = 0; i < 16; i++)
-        if(keys[i] == 1) keypressed = 1;
+        if(keys[i] == 1)
+        {
+            registers[x] = i;
+            return;
+        }
 
-    if(!keypressed) programcounter -= 2;
+    programcounter -= 2;
 }
 
 // FX1E: Add value of reg x to the index register
@@ -409,7 +400,7 @@ void decode(uint16_t op)
             //printf("Not tested: %x %x %x %x\n", i,x,y,n);
             break;
         case(0x29):
-            indexreg = 0; // Set index to location of font
+            indexreg = 0 + (5*registers[x]); // Set index to location of char
             break;
         case(0x33):
             toDec(x);
